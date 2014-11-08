@@ -32,7 +32,7 @@ void CppHelper::add(const QString &filename){
 QList <Usage> CppHelper::findUsages(int line,int col){
     qDebug()<<"findUsages"<<line<<col;
     Symbol * symbol = documentPtr->lastVisibleSymbolAt(line,col);
-    qDebug()<<documentPtr->utf8Source();
+    qDebug()<<"symbol name="<<symbol->name()->identifier()->chars();
     qDebug()<<documentPtr->functionAt(line,col);
     qDebug()<<"document::skipFunctionBody"<<documentPtr->skipFunctionBody();
     int total = documentPtr->globalSymbolCount() ;
@@ -43,6 +43,7 @@ QList <Usage> CppHelper::findUsages(int line,int col){
     if(symbol){
         qDebug()<<"symbol";
         FindUsages usages(source,documentPtr,snapshot);
+        usages(symbol);
         return usages.usages();
     }
     return QList<Usage>();
