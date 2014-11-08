@@ -14,12 +14,19 @@ CONFIG   -= app_bundle
 
 TEMPLATE = app
 
-
-SOURCES += main.cpp
+CONFIG += c++11
+SOURCES += main.cpp \
+    cpphelper.cpp
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../cplusplus/release/ -lcplusplus
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../cplusplus/debug/ -lcplusplus
 else:unix: LIBS += -L$$PWD/../cplusplus/ -lcplusplus
 
 INCLUDEPATH += $$PWD/../cplusplus
-DEPENDPATH += $$PWD/../cplusplus
+INCLUDEPATH += $$PWD/../
+INCLUDEPATH += $$PWD/../3rdparty/
+DEPENDPATH += $$PWD/../cplusplus/
+DEPENDPATH += $$PWD/../3rdparty/
+
+HEADERS += \
+    cpphelper.h
