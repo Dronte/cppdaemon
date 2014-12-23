@@ -1,4 +1,5 @@
 #include "cpphelper.h"
+#include "Overview.h"
 #include<QByteArray>
 #include<QFile>
 #include<QDebug>
@@ -33,6 +34,8 @@ QList <Usage> CppHelper::findUsages(int line,int col){
     qDebug()<<"findUsages"<<line<<col;
     Symbol * symbol = documentPtr->lastVisibleSymbolAt(line,col);
     qDebug()<<"symbol name="<<symbol->name()->identifier()->chars();
+    Overview overview;
+    qDebug()<<"symbol pretty name="<<overview(symbol->name());
     qDebug()<<documentPtr->functionAt(line,col);
     qDebug()<<"document::skipFunctionBody"<<documentPtr->skipFunctionBody();
     int total = documentPtr->globalSymbolCount() ;
