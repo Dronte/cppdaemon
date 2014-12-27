@@ -4,14 +4,13 @@ contains(CONFIG, dll) {
     DEFINES += CPLUSPLUS_BUILD_STATIC_LIB
 }
 
-QMAKE_CXXFLAGS += -std=c++11
-
-INCLUDEPATH *= ../3rdparty
+INCLUDEPATH *= ../3rdparty/
+INCLUDEPATH += ../3rdparty/cplusplus/
 INCLUDEPATH += ../
 
 include(../3rdparty/cplusplus/cplusplus.pri)
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += concurrent
+QT += concurrent
 
 #DEFINES += DEBUG_INCLUDE_GUARD_TRACKING
 
@@ -92,4 +91,3 @@ SOURCES += \
     $$PWD/Dumpers.cpp \
     $$PWD/cppmodelmanagerbase.cpp
 
-RESOURCES += $$PWD/cplusplus.qrc

@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'OverviewModel.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.3.2)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.4.0)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'OverviewModel.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.3.2. It"
+#error "This file was generated using the moc from 5.4.0. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -29,11 +29,12 @@ struct qt_meta_stringdata_CPlusPlus__OverviewModel_t {
     )
 static const qt_meta_stringdata_CPlusPlus__OverviewModel_t qt_meta_stringdata_CPlusPlus__OverviewModel = {
     {
-QT_MOC_LITERAL(0, 0, 24),
-QT_MOC_LITERAL(1, 25, 7),
-QT_MOC_LITERAL(2, 33, 0),
-QT_MOC_LITERAL(3, 34, 24),
-QT_MOC_LITERAL(4, 59, 3)
+QT_MOC_LITERAL(0, 0, 24), // "CPlusPlus::OverviewModel"
+QT_MOC_LITERAL(1, 25, 7), // "rebuild"
+QT_MOC_LITERAL(2, 33, 0), // ""
+QT_MOC_LITERAL(3, 34, 24), // "CPlusPlus::Document::Ptr"
+QT_MOC_LITERAL(4, 59, 3) // "doc"
+
     },
     "CPlusPlus::OverviewModel\0rebuild\0\0"
     "CPlusPlus::Document::Ptr\0doc"
@@ -75,7 +76,7 @@ void CPlusPlus::OverviewModel::qt_static_metacall(QObject *_o, QMetaObject::Call
 
 const QMetaObject CPlusPlus::OverviewModel::staticMetaObject = {
     { &QAbstractItemModel::staticMetaObject, qt_meta_stringdata_CPlusPlus__OverviewModel.data,
-      qt_meta_data_CPlusPlus__OverviewModel,  qt_static_metacall, 0, 0}
+      qt_meta_data_CPlusPlus__OverviewModel,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -86,7 +87,7 @@ const QMetaObject *CPlusPlus::OverviewModel::metaObject() const
 
 void *CPlusPlus::OverviewModel::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_CPlusPlus__OverviewModel.stringdata))
         return static_cast<void*>(const_cast< OverviewModel*>(this));
     return QAbstractItemModel::qt_metacast(_clname);

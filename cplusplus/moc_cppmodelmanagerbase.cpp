@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'cppmodelmanagerbase.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.3.2)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.4.0)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'cppmodelmanagerbase.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.3.2. It"
+#error "This file was generated using the moc from 5.4.0. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -29,7 +29,8 @@ struct qt_meta_stringdata_CPlusPlus__CppModelManagerBase_t {
     )
 static const qt_meta_stringdata_CPlusPlus__CppModelManagerBase_t qt_meta_stringdata_CPlusPlus__CppModelManagerBase = {
     {
-QT_MOC_LITERAL(0, 0, 30)
+QT_MOC_LITERAL(0, 0, 30) // "CPlusPlus::CppModelManagerBase"
+
     },
     "CPlusPlus::CppModelManagerBase"
 };
@@ -61,7 +62,7 @@ void CPlusPlus::CppModelManagerBase::qt_static_metacall(QObject *_o, QMetaObject
 
 const QMetaObject CPlusPlus::CppModelManagerBase::staticMetaObject = {
     { &QObject::staticMetaObject, qt_meta_stringdata_CPlusPlus__CppModelManagerBase.data,
-      qt_meta_data_CPlusPlus__CppModelManagerBase,  qt_static_metacall, 0, 0}
+      qt_meta_data_CPlusPlus__CppModelManagerBase,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -72,7 +73,7 @@ const QMetaObject *CPlusPlus::CppModelManagerBase::metaObject() const
 
 void *CPlusPlus::CppModelManagerBase::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
+    if (!_clname) return Q_NULLPTR;
     if (!strcmp(_clname, qt_meta_stringdata_CPlusPlus__CppModelManagerBase.stringdata))
         return static_cast<void*>(const_cast< CppModelManagerBase*>(this));
     return QObject::qt_metacast(_clname);
