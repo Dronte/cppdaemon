@@ -33,6 +33,8 @@
 
 #include <cplusplus/CPlusPlusForwardDeclarations.h>
 
+#include <utils/fileutils.h>
+
 #include <QBitArray>
 #include <QHash>
 #include <QString>
@@ -45,18 +47,13 @@ class Snapshot;
 
 class CPLUSPLUS_EXPORT DependencyTable
 {
-public:
-    bool isValidFor(const Snapshot &snapshot) const;
-
-    QStringList filesDependingOn(const QString &fileName) const;
-    QHash<QString, QStringList> dependencyTable() const;
-
-    void build(const Snapshot &snapshot);
-
 private:
-    QHash<QString, QStringList> includesPerFile;
-    QVector<QString> files;
-    QHash<QString, int> fileIndex;
+    friend class Snapshot;
+    void build(const Snapshot &snapshot);
+    Utils::FileNameList filesDependingOn(const Utils::FileName &fileName) const;
+
+    QVector<Utils::FileName> files;
+    QHash<Utils::FileName, int> fileIndex;
     QHash<int, QList<int> > includes;
     QVector<QBitArray> includeMap;
 };

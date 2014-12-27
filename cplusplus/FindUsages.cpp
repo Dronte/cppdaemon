@@ -1921,8 +1921,6 @@ bool FindUsages::visit(QualifiedNameAST *ast)
     }
 
     return false;
-
-    return false;
 }
 
 bool FindUsages::visit(OperatorFunctionIdAST *ast)

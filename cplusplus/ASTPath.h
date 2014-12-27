@@ -37,7 +37,7 @@
 #include "CppDocument.h"
 
 #include <QList>
-//#include <QTextCursor>
+#include <QTextCursor>
 
 #undef WITH_AST_PATH_DUMP
 
@@ -51,8 +51,8 @@ public:
           _doc(doc), _line(0), _column(0)
     {}
 
- //   QList<AST *> operator()(const QTextCursor &cursor)
- //   { return this->operator()(cursor.blockNumber() + 1, cursor.positionInBlock() + 1); }
+    QList<AST *> operator()(const QTextCursor &cursor)
+    { return this->operator()(cursor.blockNumber() + 1, cursor.positionInBlock() + 1); }
 
     /// line and column are 1-based!
     QList<AST *> operator()(int line, int column);

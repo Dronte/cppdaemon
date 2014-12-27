@@ -401,6 +401,9 @@ protected:
             const char *end = spell + len;
             char *vend = const_cast<char *>(end);
             _value.set_long(strtol(spell, &vend, 0));
+            // TODO: if (vend != end) error(NaN)
+            // TODO: binary literals
+            // TODO: float literals
             ++(*_lex);
         } else if (isTokenDefined()) {
             ++(*_lex);
@@ -835,13 +838,13 @@ void Preprocessor::pushToken(Preprocessor::PPToken *tk)
 
 void Preprocessor::lex(PPToken *tk)
 {
-_Lagain:
+again:
     if (m_state.m_tokenBuffer) {
         // There is a token buffer, so read from there.
         if (m_state.m_tokenBuffer->tokens.empty()) {
             // The token buffer is empty, so pop it, and start over.
             m_state.popTokenBuffer();
-            goto _Lagain;
+            goto again;
         }
         *tk = m_state.m_tokenBuffer->tokens.front();
         m_state.m_tokenBuffer->tokens.pop_front();
@@ -860,17 +863,17 @@ _Lagain:
     // Adjust token's line number in order to take into account the environment reference.
     tk->lineno += m_state.m_lineRef - 1;
 
-_Lclassify:
+reclassify:
     if (! m_state.m_inPreprocessorDirective) {
         if (tk->newline() && tk->is(T_POUND)) {
             handlePreprocessorDirective(tk);
-            goto _Lclassify;
+            goto reclassify;
         } else if (tk->newline() && skipping()) {
             ScopedBoolSwap s(m_state.m_inPreprocessorDirective, true);
             do {
                 lex(tk);
             } while (isContinuationToken(*tk));
-            goto _Lclassify;
+            goto reclassify;
         } else if (tk->is(T_IDENTIFIER) && !isQtReservedWord(tk->tokenStart(), tk->bytes())) {
             m_state.updateIncludeGuardState(State::IncludeGuardStateHint_OtherToken);
             if (m_state.m_inCondition && tk->asByteArrayRef() == "defined") {
@@ -878,7 +881,7 @@ _Lclassify:
             } else {
                 synchronizeOutputLines(*tk);
                 if (handleIdentifier(tk))
-                    goto _Lagain;
+                    goto again;
             }
         } else if (tk->isNot(T_COMMENT) && tk->isNot(T_EOF_SYMBOL)) {
             m_state.updateIncludeGuardState(State::IncludeGuardStateHint_OtherToken);
@@ -1035,6 +1038,9 @@ bool Preprocessor::handleIdentifier(PPToken *tk)
                 } else {
 
                     argRefs.push_back(MacroArgumentReference(
+                                  m_state.m_bytesOffsetRef + argTks.first().bytesBegin(),
+                                  argTks.last().bytesBegin() + argTks.last().bytes()
+                                    - argTks.first().bytesBegin(),
                                   m_state.m_utf16charsOffsetRef + argTks.first().utf16charsBegin(),
                                   argTks.last().utf16charsBegin() + argTks.last().utf16chars()
                                     - argTks.first().utf16charsBegin()));
@@ -1385,6 +1391,7 @@ void Preprocessor::preprocess(const QString &fileName, const QByteArray &source,
     m_state.m_lexer = new Lexer(source.constBegin(), source.constEnd());
     m_state.m_lexer->setScanKeywords(false);
     m_state.m_lexer->setScanAngleStringLiteralTokens(false);
+    m_state.m_lexer->setPreprocessorMode(true);
     if (m_keepComments)
         m_state.m_lexer->setScanCommentTokens(true);
     m_state.m_result = result;
@@ -1800,6 +1807,7 @@ const PPToken Preprocessor::evalExpression(PPToken *tk, Value &result)
     PPToken lastConditionToken;
     const QByteArray expanded = expand(tk, &lastConditionToken);
     Lexer lexer(expanded.constData(), expanded.constData() + expanded.size());
+    lexer.setPreprocessorMode(true);
     std::vector<Token> buf;
     Token t;
     do {

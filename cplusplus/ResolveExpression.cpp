@@ -59,12 +59,12 @@ static const bool debug = ! qgetenv("QTC_LOOKUPCONTEXT_DEBUG").isEmpty();
 
 namespace {
 
-template <typename _Tp>
-static QList<_Tp> removeDuplicates(const QList<_Tp> &results)
+template <typename T>
+static QList<T> removeDuplicates(const QList<T> &results)
 {
-    QList<_Tp> uniqueList;
-    QSet<_Tp> processed;
-    foreach (const _Tp &r, results) {
+    QList<T> uniqueList;
+    QSet<T> processed;
+    foreach (const T &r, results) {
         if (processed.contains(r))
             continue;
 
@@ -73,6 +73,161 @@ static QList<_Tp> removeDuplicates(const QList<_Tp> &results)
     }
 
     return uniqueList;
+}
+
+class TypedefsResolver
+{
+public:
+    TypedefsResolver(const LookupContext &context) : _context(context) {}
+    void resolve(FullySpecifiedType *type, Scope **scope, ClassOrNamespace *binding)
+    {
+        QSet<Symbol *> visited;
+        _binding = binding;
+        // Use a hard limit when trying to resolve typedefs. Typedefs in templates can refer to
+        // each other, each time enhancing the template argument and thus making it impossible to
+        // use an "alreadyResolved" container. FIXME: We might overcome this by resolving the
+        // template parameters.
+        unsigned maxDepth = 15;
+        for (NamedType *namedTy = 0; maxDepth && (namedTy = getNamedType(*type)); --maxDepth) {
+            QList<LookupItem> namedTypeItems = getNamedTypeItems(namedTy->name(), *scope, _binding);
+
+            if (Q_UNLIKELY(debug))
+                qDebug() << "-- we have" << namedTypeItems.size() << "candidates";
+
+            if (!findTypedef(namedTypeItems, type, scope, visited))
+                break;
+        }
+    }
+
+private:
+    NamedType *getNamedType(FullySpecifiedType& type) const
+    {
+        NamedType *namedTy = type->asNamedType();
+        if (! namedTy) {
+            if (PointerType *pointerTy = type->asPointerType())
+                namedTy = pointerTy->elementType()->asNamedType();
+        }
+        return namedTy;
+    }
+
+    QList<LookupItem> getNamedTypeItems(const Name *name, Scope *scope,
+                                        ClassOrNamespace *binding) const
+    {
+        QList<LookupItem> namedTypeItems = typedefsFromScopeUpToFunctionScope(name, scope);
+        if (namedTypeItems.isEmpty()) {
+            if (binding)
+                namedTypeItems = binding->lookup(name);
+            if (ClassOrNamespace *scopeCon = _context.lookupType(scope))
+                namedTypeItems += scopeCon->lookup(name);
+        }
+
+        return namedTypeItems;
+    }
+
+    /// Return all typedefs with given name from given scope up to function scope.
+    static QList<LookupItem> typedefsFromScopeUpToFunctionScope(const Name *name, Scope *scope)
+    {
+        QList<LookupItem> results;
+        if (!scope)
+            return results;
+        Scope *enclosingBlockScope = 0;
+        for (Block *block = scope->asBlock(); block;
+             block = enclosingBlockScope ? enclosingBlockScope->asBlock() : 0) {
+            const unsigned memberCount = block->memberCount();
+            for (unsigned i = 0; i < memberCount; ++i) {
+                Symbol *symbol = block->memberAt(i);
+                if (Declaration *declaration = symbol->asDeclaration()) {
+                    if (isTypedefWithName(declaration, name)) {
+                        LookupItem item;
+                        item.setDeclaration(declaration);
+                        item.setScope(block);
+                        item.setType(declaration->type());
+                        results.append(item);
+                    }
+                }
+            }
+            enclosingBlockScope = block->enclosingScope();
+        }
+        return results;
+    }
+
+    static bool isTypedefWithName(const Declaration *declaration, const Name *name)
+    {
+        if (declaration->isTypedef()) {
+            const Identifier *identifier = declaration->name()->identifier();
+            if (name->identifier()->match(identifier))
+                return true;
+        }
+        return false;
+    }
+
+    bool findTypedef(const QList<LookupItem>& namedTypeItems, FullySpecifiedType *type,
+                     Scope **scope, QSet<Symbol *>& visited)
+    {
+        bool foundTypedef = false;
+        foreach (const LookupItem &it, namedTypeItems) {
+            Symbol *declaration = it.declaration();
+            if (declaration && declaration->isTypedef()) {
+                if (visited.contains(declaration))
+                    break;
+                visited.insert(declaration);
+
+                // continue working with the typedefed type and scope
+                if (type->type()->isPointerType()) {
+                    *type = FullySpecifiedType(
+                            _context.bindings()->control()->pointerType(declaration->type()));
+                } else if (type->type()->isReferenceType()) {
+                    *type = FullySpecifiedType(
+                            _context.bindings()->control()->referenceType(
+                                declaration->type(),
+                                declaration->type()->asReferenceType()->isRvalueReference()));
+                } else {
+                    *type = declaration->type();
+                }
+
+                *scope = it.scope();
+                _binding = it.binding();
+                foundTypedef = true;
+                break;
+            }
+        }
+
+        return foundTypedef;
+    }
+
+    const LookupContext &_context;
+    // binding has to be remembered in case of resolving typedefs for templates
+    ClassOrNamespace *_binding;
+};
+
+static int evaluateFunctionArgument(const FullySpecifiedType &actualTy,
+                                    const FullySpecifiedType &formalTy)
+{
+    int score = 0;
+    if (actualTy.type()->match(formalTy.type())) {
+        ++score;
+        if (actualTy.isConst() == formalTy.isConst())
+            ++score;
+    } else if (actualTy.simplified().type()->match(formalTy.simplified().type())) {
+        ++score;
+        if (actualTy.simplified().isConst() == formalTy.simplified().isConst())
+            ++score;
+    } else {
+        PointerType *actualAsPointer = actualTy.type()->asPointerType();
+        PointerType *formalAsPointer = formalTy.type()->asPointerType();
+
+        if (actualAsPointer && formalAsPointer) {
+            FullySpecifiedType actualElementType = actualAsPointer->elementType();
+            FullySpecifiedType formalElementType = formalAsPointer->elementType();
+            if (actualElementType.type()->match(formalElementType.type())) {
+                ++score;
+                if (actualElementType.isConst() == formalElementType.isConst())
+                    ++score;
+            }
+        }
+    }
+
+    return score;
 }
 
 } // end of anonymous namespace
@@ -474,9 +629,9 @@ bool ResolveExpression::visit(UnaryExpressionAST *ast)
                         }
                     }
                 }
-                if (!added)
-                    it.remove();
             }
+            if (!added)
+                it.remove();
         }
     }
     return false;
@@ -646,15 +801,6 @@ bool ResolveExpression::maybeValidPrototype(Function *funTy, unsigned actualArgu
     return funTy->maybeValidPrototype(actualArgumentCount);
 }
 
-bool ResolveExpression::implicitConversion(const FullySpecifiedType &sourceTy, const FullySpecifiedType &targetTy) const
-{
-    if (sourceTy.match(targetTy))
-        return true;
-    else if (sourceTy.simplified().match(targetTy.simplified()))
-        return true;
-    return false;
-}
-
 bool ResolveExpression::visit(CallAST *ast)
 {
     const QList<LookupItem> baseResults = resolve(ast->base_expression, _scope);
@@ -695,11 +841,13 @@ bool ResolveExpression::visit(CallAST *ast)
                             continue;
 
                         actualTy = actual.first().type();
-                    } else
+                    } else {
                         actualTy = formalTy;
+                        score += 2;
+                        continue;
+                    }
 
-                    if (implicitConversion(actualTy, formalTy))
-                        ++score;
+                    score += evaluateFunctionArgument(actualTy, formalTy);
                 }
 
                 sortedResults.insert(LookupMap::value_type(-score, base));
@@ -759,13 +907,14 @@ bool ResolveExpression::visit(CallAST *ast)
 bool ResolveExpression::visit(ArrayAccessAST *ast)
 {
     const QList<LookupItem> baseResults = resolve(ast->base_expression, _scope);
-    const QList<LookupItem> indexResults = resolve(ast->expression, _scope);
-
     const Name *arrayAccessOp = control()->operatorNameId(OperatorNameId::ArrayAccessOp);
 
     foreach (const LookupItem &result, baseResults) {
         FullySpecifiedType ty = result.type().simplified();
         Scope *scope = result.scope();
+
+        TypedefsResolver typedefsResolver(_context);
+        typedefsResolver.resolve(&ty, &scope, result.binding());
 
         if (PointerType *ptrTy = ty->asPointerType()) {
             addResult(ptrTy->elementType().simplified(), scope);
@@ -886,131 +1035,6 @@ ClassOrNamespace *ResolveExpression::findClass(const FullySpecifiedType &origina
 
     return binding;
 }
-
-class TypedefsResolver
-{
-public:
-    TypedefsResolver(const LookupContext &context) : _context(context) {}
-    void resolve(FullySpecifiedType *type, Scope **scope, ClassOrNamespace *binding)
-    {
-        QSet<Symbol *> visited;
-        _binding = binding;
-        // Use a hard limit when trying to resolve typedefs. Typedefs in templates can refer to
-        // each other, each time enhancing the template argument and thus making it impossible to
-        // use an "alreadyResolved" container. FIXME: We might overcome this by resolving the
-        // template parameters.
-        unsigned maxDepth = 15;
-        for (NamedType *namedTy = 0; maxDepth && (namedTy = getNamedType(*type)); --maxDepth) {
-            QList<LookupItem> namedTypeItems = getNamedTypeItems(namedTy->name(), *scope, _binding);
-
-            if (Q_UNLIKELY(debug))
-                qDebug() << "-- we have" << namedTypeItems.size() << "candidates";
-
-            if (!findTypedef(namedTypeItems, type, scope, visited))
-                break;
-        }
-    }
-
-private:
-    NamedType *getNamedType(FullySpecifiedType& type) const
-    {
-        NamedType *namedTy = type->asNamedType();
-        if (! namedTy) {
-            if (PointerType *pointerTy = type->asPointerType())
-                namedTy = pointerTy->elementType()->asNamedType();
-        }
-        return namedTy;
-    }
-
-    QList<LookupItem> getNamedTypeItems(const Name *name, Scope *scope,
-                                        ClassOrNamespace *binding) const
-    {
-        QList<LookupItem> namedTypeItems = typedefsFromScopeUpToFunctionScope(name, scope);
-        if (namedTypeItems.isEmpty()) {
-            if (binding)
-                namedTypeItems = binding->lookup(name);
-            if (ClassOrNamespace *scopeCon = _context.lookupType(scope))
-                namedTypeItems += scopeCon->lookup(name);
-        }
-
-        return namedTypeItems;
-    }
-
-    /// Return all typedefs with given name from given scope up to function scope.
-    static QList<LookupItem> typedefsFromScopeUpToFunctionScope(const Name *name, Scope *scope)
-    {
-        QList<LookupItem> results;
-        if (!scope)
-            return results;
-        Scope *enclosingBlockScope = 0;
-        for (Block *block = scope->asBlock(); block;
-             block = enclosingBlockScope ? enclosingBlockScope->asBlock() : 0) {
-            const unsigned memberCount = block->memberCount();
-            for (unsigned i = 0; i < memberCount; ++i) {
-                Symbol *symbol = block->memberAt(i);
-                if (Declaration *declaration = symbol->asDeclaration()) {
-                    if (isTypedefWithName(declaration, name)) {
-                        LookupItem item;
-                        item.setDeclaration(declaration);
-                        item.setScope(block);
-                        item.setType(declaration->type());
-                        results.append(item);
-                    }
-                }
-            }
-            enclosingBlockScope = block->enclosingScope();
-        }
-        return results;
-    }
-
-    static bool isTypedefWithName(const Declaration *declaration, const Name *name)
-    {
-        if (declaration->isTypedef()) {
-            const Identifier *identifier = declaration->name()->identifier();
-            if (name->identifier()->match(identifier))
-                return true;
-        }
-        return false;
-    }
-
-    bool findTypedef(const QList<LookupItem>& namedTypeItems, FullySpecifiedType *type,
-                     Scope **scope, QSet<Symbol *>& visited)
-    {
-        bool foundTypedef = false;
-        foreach (const LookupItem &it, namedTypeItems) {
-            Symbol *declaration = it.declaration();
-            if (declaration && declaration->isTypedef()) {
-                if (visited.contains(declaration))
-                    break;
-                visited.insert(declaration);
-
-                // continue working with the typedefed type and scope
-                if (type->type()->isPointerType()) {
-                    *type = FullySpecifiedType(
-                            _context.bindings()->control()->pointerType(declaration->type()));
-                } else if (type->type()->isReferenceType()) {
-                    *type = FullySpecifiedType(
-                            _context.bindings()->control()->referenceType(
-                                declaration->type(),
-                                declaration->type()->asReferenceType()->isRvalueReference()));
-                } else {
-                    *type = declaration->type();
-                }
-
-                *scope = it.scope();
-                _binding = it.binding();
-                foundTypedef = true;
-                break;
-            }
-        }
-
-        return foundTypedef;
-    }
-
-    const LookupContext &_context;
-    // binding has to be remembered in case of resolving typedefs for templates
-    ClassOrNamespace *_binding;
-};
 
 ClassOrNamespace *ResolveExpression::baseExpression(const QList<LookupItem> &baseResults,
                                                     int accessOp,

@@ -41,7 +41,8 @@ using namespace CPlusPlus;
 SimpleLexer::SimpleLexer()
     : _lastState(0),
       _skipComments(false),
-      _endedJoined(false)
+      _endedJoined(false),
+      _ppMode(false)
 {}
 
 SimpleLexer::~SimpleLexer()
@@ -62,9 +63,9 @@ bool SimpleLexer::endedJoined() const
     return _endedJoined;
 }
 
-QList<Token> SimpleLexer::operator()(const QString &text, int state)
+Tokens SimpleLexer::operator()(const QString &text, int state)
 {
-    QList<Token> tokens;
+    Tokens tokens;
 
     const QByteArray bytes = text.toUtf8();
     const char *firstChar = bytes.constData();
@@ -73,6 +74,7 @@ QList<Token> SimpleLexer::operator()(const QString &text, int state)
     Lexer lex(firstChar, lastChar);
     lex.setLanguageFeatures(_languageFeatures);
     lex.setStartWithNewline(true);
+    lex.setPreprocessorMode(_ppMode);
 
     if (! _skipComments)
         lex.setScanCommentTokens(true);
@@ -113,7 +115,7 @@ QList<Token> SimpleLexer::operator()(const QString &text, int state)
     return tokens;
 }
 
-int SimpleLexer::tokenAt(const QList<Token> &tokens, unsigned utf16charsOffset)
+int SimpleLexer::tokenAt(const Tokens &tokens, unsigned utf16charsOffset)
 {
     for (int index = tokens.size() - 1; index >= 0; --index) {
         const Token &tk = tokens.at(index);
@@ -138,12 +140,12 @@ Token SimpleLexer::tokenAt(const QString &text,
     features.cxx11Enabled = qtMocRunEnabled;
     SimpleLexer tokenize;
     tokenize.setLanguageFeatures(features);
-    const QList<Token> tokens = tokenize(text, state);
+    const QVector<Token> tokens = tokenize(text, state);
     const int tokenIdx = tokenAt(tokens, utf16charsOffset);
     return (tokenIdx == -1) ? Token() : tokens.at(tokenIdx);
 }
 
-int SimpleLexer::tokenBefore(const QList<Token> &tokens, unsigned utf16charsOffset)
+int SimpleLexer::tokenBefore(const Tokens &tokens, unsigned utf16charsOffset)
 {
     for (int index = tokens.size() - 1; index >= 0; --index) {
         const Token &tk = tokens.at(index);

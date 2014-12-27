@@ -35,6 +35,9 @@
 
 #include <cplusplus/CPlusPlusForwardDeclarations.h>
 #include <cplusplus/PreprocessorClient.h>
+#include <cplusplus/DependencyTable.h>
+
+#include <utils/fileutils.h>
 
 #include <QSharedPointer>
 #include <QDateTime>
@@ -100,7 +103,8 @@ public:
     QList<Macro> definedMacros() const
     { return _definedMacros; }
 
-    QString functionAt(int line, int column) const;
+    QString functionAt(int line, int column, int *lineOpeningDeclaratorParenthesis = 0,
+                       int *lineClosingBrace = 0) const;
     Symbol *lastVisibleSymbolAt(unsigned line, unsigned column = 0) const;
     Scope *scopeAt(unsigned line, unsigned column = 0);
 
@@ -125,6 +129,7 @@ public:
     bool isTokenized() const;
     void tokenize();
 
+    void setRetryHarderToParseDeclarations(bool yesno);
     bool isParsed() const;
     bool parse(ParseMode mode = ParseTranlationUnit);
 
@@ -392,44 +397,65 @@ private:
 
 class CPLUSPLUS_EXPORT Snapshot
 {
-    typedef QHash<QString, Document::Ptr> _Base;
+    typedef QHash<Utils::FileName, Document::Ptr> Base;
 
 public:
     Snapshot();
     ~Snapshot();
 
-    typedef _Base::const_iterator iterator;
-    typedef _Base::const_iterator const_iterator;
+    typedef Base::const_iterator iterator;
+    typedef Base::const_iterator const_iterator;
+    typedef QPair<Document::Ptr, unsigned> IncludeLocation;
 
     int size() const; // ### remove
     bool isEmpty() const;
 
     void insert(Document::Ptr doc); // ### remove
-    void remove(const QString &fileName); // ### remove
+    void remove(const Utils::FileName &fileName); // ### remove
+    void remove(const QString &fileName)
+    { remove(Utils::FileName::fromString(fileName)); }
 
     const_iterator begin() const { return _documents.begin(); }
     const_iterator end() const { return _documents.end(); }
 
-    bool contains(const QString &fileName) const;
-    Document::Ptr document(const QString &fileName) const;
+    bool contains(const Utils::FileName &fileName) const;
+    bool contains(const QString &fileName) const
+    { return contains(Utils::FileName::fromString(fileName)); }
 
-    const_iterator find(const QString &fileName) const;
+    Document::Ptr document(const Utils::FileName &fileName) const;
+    Document::Ptr document(const QString &fileName) const
+    { return document(Utils::FileName::fromString(fileName)); }
+
+    const_iterator find(const Utils::FileName &fileName) const;
+    const_iterator find(const QString &fileName) const
+    { return find(Utils::FileName::fromString(fileName)); }
 
     Snapshot simplified(Document::Ptr doc) const;
 
     Document::Ptr preprocessedDocument(const QByteArray &source,
-                                       const QString &fileName) const;
+                                       const Utils::FileName &fileName) const;
+    Document::Ptr preprocessedDocument(const QByteArray &source,
+                                       const QString &fileName) const
+    { return preprocessedDocument(source, Utils::FileName::fromString(fileName)); }
 
     Document::Ptr documentFromSource(const QByteArray &preprocessedDocument,
                                      const QString &fileName) const;
 
     QSet<QString> allIncludesForDocument(const QString &fileName) const;
+    QList<IncludeLocation> includeLocationsOfDocument(const QString &fileName) const;
+
+    Utils::FileNameList filesDependingOn(const Utils::FileName &fileName) const;
+    Utils::FileNameList filesDependingOn(const QString &fileName) const
+    { return filesDependingOn(Utils::FileName::fromString(fileName)); }
+    void updateDependencyTable() const;
+
+    bool operator==(const Snapshot &other) const;
 
 private:
     void allIncludesForDocument_helper(const QString &fileName, QSet<QString> &result) const;
 
-private:
-    _Base _documents;
+    mutable DependencyTable m_deps;
+    Base _documents;
 };
 
 } // namespace CPlusPlus
