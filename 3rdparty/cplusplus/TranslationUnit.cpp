@@ -49,7 +49,8 @@ TranslationUnit::TranslationUnit(Control *control, const StringLiteral *fileId)
       _lastSourceChar(0),
       _pool(0),
       _ast(0),
-      _flags(0)
+      _flags(0),
+      _retryParseDeclarationLimit(defaultRetryParseDeclarationLimit())
 {
     _tokens = new std::vector<Token>();
     _comments = new std::vector<Token>();
@@ -162,7 +163,7 @@ void TranslationUnit::tokenize()
     do {
         lex(&tk);
 
-        _Lrecognize:
+recognize:
         if (tk.is(T_POUND) && tk.newline()) {
             const unsigned utf16CharOffset = tk.utf16charOffset;
             lex(&tk);
@@ -244,7 +245,7 @@ void TranslationUnit::tokenize()
                 while (tk.isNot(T_EOF_SYMBOL) && ! tk.newline())
                     lex(&tk);
             }
-            goto _Lrecognize;
+            goto recognize;
         } else if (tk.kind() == T_LBRACE) {
             braces.push(unsigned(_tokens->size()));
         } else if (tk.kind() == T_RBRACE && ! braces.empty()) {
@@ -299,7 +300,7 @@ bool TranslationUnit::parse(ParseMode mode)
 
     f._parsed = true;
 
-    Parser parser(this);
+    Parser parser(this, _retryParseDeclarationLimit);
     bool parsed = false;
 
     switch (mode) {

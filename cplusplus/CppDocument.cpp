@@ -379,7 +379,9 @@ void Document::addMacroUse(const Macro &macro,
                  beginLine);
 
     foreach (const MacroArgumentReference &actual, actuals) {
-        const Block arg(0, 0, actual.utf16charsOffset(),
+        const Block arg(actual.bytesOffset(),
+                        actual.bytesOffset() + actual.bytesLength(),
+                        actual.utf16charsOffset(),
                         actual.utf16charsOffset() + actual.utf16charsLength());
         use.addArgument(arg);
     }
@@ -491,8 +493,12 @@ void Document::setGlobalNamespace(Namespace *globalNamespace)
  *
  * \param line the line number, starting with line 1
  * \param column the column number, starting with column 1
+ * \param lineOpeningDeclaratorParenthesis optional output parameter, the line of the opening
+          parenthesis of the declarator starting with 1
+ * \param lineClosingBrace optional output parameter, the line of the closing brace starting with 1
  */
-QString Document::functionAt(int line, int column) const
+QString Document::functionAt(int line, int column, int *lineOpeningDeclaratorParenthesis,
+                             int *lineClosingBrace) const
 {
     if (line < 1 || column < 1)
         return QString();
@@ -503,10 +509,8 @@ QString Document::functionAt(int line, int column) const
 
     // Find the enclosing function scope (which might be several levels up, or we might be standing
     // on it)
-    Scope *scope;
-    if (symbol->isScope())
-        scope = symbol->asScope();
-    else
+    Scope *scope = symbol->asScope();
+    if (!scope)
         scope = symbol->enclosingScope();
 
     while (scope && !scope->isFunction() )
@@ -515,22 +519,21 @@ QString Document::functionAt(int line, int column) const
     if (!scope)
         return QString();
 
-    // We found the function scope, extract its name.
-    const Overview o;
-    QString rc = o.prettyName(scope->name());
-
-    // Prepend namespace "Foo::Foo::foo()" up to empty root namespace
-    for (const Symbol *owner = scope->enclosingNamespace();
-         owner; owner = owner->enclosingNamespace()) {
-        const QString name = o.prettyName(owner->name());
-        if (name.isEmpty()) {
-            break;
-        } else {
-            rc.prepend(QLatin1String("::"));
-            rc.prepend(name);
-        }
+    // We found the function scope
+    if (lineOpeningDeclaratorParenthesis) {
+        unsigned line;
+        translationUnit()->getPosition(scope->startOffset(), &line);
+        *lineOpeningDeclaratorParenthesis = static_cast<int>(line);
     }
-    return rc;
+
+    if (lineClosingBrace) {
+        unsigned line;
+        translationUnit()->getPosition(scope->endOffset(), &line);
+        *lineClosingBrace = static_cast<int>(line);
+    }
+
+    const QList<const Name *> fullyQualifiedName = LookupContext::fullyQualifiedName(scope);
+    return Overview().prettyName(fullyQualifiedName);
 }
 
 Scope *Document::scopeAt(unsigned line, unsigned column)
@@ -618,6 +621,13 @@ bool Document::isTokenized() const
 void Document::tokenize()
 {
     _translationUnit->tokenize();
+}
+
+void Document::setRetryHarderToParseDeclarations(bool yesno)
+{
+    _translationUnit->setRetryParseDeclarationLimit(
+                yesno ? 1000
+                      : TranslationUnit::defaultRetryParseDeclarationLimit());
 }
 
 bool Document::isParsed() const
@@ -731,31 +741,33 @@ bool Snapshot::isEmpty() const
     return _documents.isEmpty();
 }
 
-Snapshot::const_iterator Snapshot::find(const QString &fileName) const
+Snapshot::const_iterator Snapshot::find(const Utils::FileName &fileName) const
 {
     return _documents.find(fileName);
 }
 
-void Snapshot::remove(const QString &fileName)
+void Snapshot::remove(const Utils::FileName &fileName)
 {
     _documents.remove(fileName);
 }
 
-bool Snapshot::contains(const QString &fileName) const
+bool Snapshot::contains(const Utils::FileName &fileName) const
 {
     return _documents.contains(fileName);
 }
 
 void Snapshot::insert(Document::Ptr doc)
 {
-    if (doc)
-        _documents.insert(doc->fileName(), doc);
+    if (doc) {
+        _documents.insert(Utils::FileName::fromString(doc->fileName()), doc);
+        m_deps.files.clear(); // Will trigger re-build when accessed.
+    }
 }
 
 Document::Ptr Snapshot::preprocessedDocument(const QByteArray &source,
-                                             const QString &fileName) const
+                                             const Utils::FileName &fileName) const
 {
-    Document::Ptr newDoc = Document::create(fileName);
+    Document::Ptr newDoc = Document::create(fileName.toString());
     if (Document::Ptr thisDocument = document(fileName)) {
         newDoc->_revision = thisDocument->_revision;
         newDoc->_editorRevision = thisDocument->_editorRevision;
@@ -796,6 +808,36 @@ QSet<QString> Snapshot::allIncludesForDocument(const QString &fileName) const
     return result;
 }
 
+QList<Snapshot::IncludeLocation> Snapshot::includeLocationsOfDocument(const QString &fileName) const
+{
+    QList<IncludeLocation> result;
+    for (const_iterator cit = begin(), citEnd = end(); cit != citEnd; ++cit) {
+        const Document::Ptr doc = cit.value();
+        foreach (const Document::Include &includeFile, doc->resolvedIncludes()) {
+            if (includeFile.resolvedFileName() == fileName)
+                result.append(qMakePair(doc, includeFile.line()));
+        }
+    }
+    return result;
+}
+
+Utils::FileNameList Snapshot::filesDependingOn(const Utils::FileName &fileName) const
+{
+    updateDependencyTable();
+    return m_deps.filesDependingOn(fileName);
+}
+
+void Snapshot::updateDependencyTable() const
+{
+    if (m_deps.files.isEmpty())
+        m_deps.build(*this);
+}
+
+bool Snapshot::operator==(const Snapshot &other) const
+{
+    return _documents == other._documents;
+}
+
 void Snapshot::allIncludesForDocument_helper(const QString &fileName, QSet<QString> &result) const
 {
     if (Document::Ptr doc = document(fileName)) {
@@ -808,7 +850,7 @@ void Snapshot::allIncludesForDocument_helper(const QString &fileName, QSet<QStri
     }
 }
 
-Document::Ptr Snapshot::document(const QString &fileName) const
+Document::Ptr Snapshot::document(const Utils::FileName &fileName) const
 {
     return _documents.value(fileName);
 }
