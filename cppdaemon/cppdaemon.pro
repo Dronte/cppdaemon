@@ -5,7 +5,7 @@
 #-------------------------------------------------
 
 QT       += core
-
+QT       += network
 QT       -= gui
 
 TARGET = cppdaemon
@@ -16,7 +16,9 @@ TEMPLATE = app
 
 CONFIG += c++11
 SOURCES += main.cpp \
-    cpphelper.cpp
+#    cpphelper.cpp \
+    #project.cpp \
+    socketlistener.cpp
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../cplusplus/release/ -lcplusplus
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../cplusplus/debug/ -lcplusplus
@@ -29,4 +31,6 @@ DEPENDPATH += $$PWD/../cplusplus/
 DEPENDPATH += $$PWD/../3rdparty/
 
 HEADERS += \
-    cpphelper.h
+#    cpphelper.h \
+    project.h \
+    socketlistener.h
