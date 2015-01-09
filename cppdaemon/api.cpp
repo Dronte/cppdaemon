@@ -34,8 +34,8 @@ void Api::processRequest(qintptr socketDescriptor,QByteArray request){
             //ERROR
         }
         QString method = methodValue.toString();
-        if(method==QString("addSource")){
-            addSource(arguments);
+        if(method==QString("setSource")){
+            setSource(arguments);
         }else if(method==QString("complete")){
             //complete(socketDescriptor,request);
         }
@@ -44,9 +44,10 @@ void Api::processRequest(qintptr socketDescriptor,QByteArray request){
     }
 }
 
-void Api::addSource(const QJsonValue & arguments)const{
-    qDebug()<<"addingSource!";
-    //project.addSource();
+void Api::setSource(const QJsonValue & arguments)const{
+    QJsonValue fileName = arguments.object()["fileName"];
+    QJsonValue text = arguments.object()["source"];
+    project.setSource(fileName.toString(),text.toString().toUtf8());
 }
 
 /*

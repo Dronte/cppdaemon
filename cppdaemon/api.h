@@ -9,7 +9,7 @@ class Api : public QObject
 {
     Q_OBJECT
 private:
-    void addSource(const QJsonValue & paramters)const;
+    void setSource(const QJsonValue & paramters)const;
     QSignalMapper taskReadyMapper;
     QSignalMapper taskFinishedMapper;
     void handleNewTask(Task * task,qintptr socketDescriptor);
