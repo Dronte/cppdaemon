@@ -1,19 +1,25 @@
 #include "project.h"
+#include<QDebug>
 
-project::project(QObject *parent) : QObject(parent)
+Project::Project(QObject *parent) : QObject(parent)
 {
 
 }
 
-project::~project()
+Project::~Project()
 {
 
 }
 
-Task* project::setSource(const QString filename,const QByteArray & source){
+void Project::setSource(int taskId,const QString filename,const QByteArray & source){
+    qDebug()<<"settingSource";
     /*
     for(auto task:tasks){
         task->cancel();
     }
     */
+}
+
+void Project::findUsages(int taskId,const QString & document,int row,int line){
+    qDebug()<<"Finding Usages!";
 }
