@@ -9,7 +9,7 @@ INCLUDEPATH += ../3rdparty/cplusplus/
 INCLUDEPATH += ../
 
 include(../3rdparty/cplusplus/cplusplus.pri)
-#include(../utils/utils.pri)
+include(../utils/utils.pri)
 
 QT += concurrent
 

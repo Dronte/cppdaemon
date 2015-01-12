@@ -25,13 +25,13 @@ private:
     QMap<QString/*filename*/,QByteArray/*source*/> pendingSource;
     QFutureWatcher<void> processing;
     SourceParser sourceParser;
-    friend void addSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,const QByteArray & source);
+    friend void setSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,const QByteArray & source);
 public:
-    void addSource(const QString & fileName,const QByteArray & source);
+    void setSource(const QString & fileName,const QByteArray & source);
     void runProcessing();
     SnapshotUpdater(QThreadPool * threadPool);
     ~SnapshotUpdater();
 };
-void addSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,const QByteArray & source);
+void setSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,const QByteArray & source);
 
 #endif // SNAPSHOTUPDATER_H

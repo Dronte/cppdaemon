@@ -14,7 +14,7 @@ Project::~Project()
 
 void Project::setSource(int taskId,const QString fileName,const QByteArray & source){
     qDebug()<<"settingSource";
-    snapshotUpdater.addSource(fileName,source);
+    snapshotUpdater.setSource(fileName,source);
     /*
     for(auto task:tasks){
         task->cancel();

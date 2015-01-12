@@ -6,6 +6,7 @@
 
 QT       += core
 QT       += network
+QT       += concurrent
 QT       -= gui
 
 TARGET = cppdaemon

@@ -11,11 +11,11 @@ SnapshotUpdater::~SnapshotUpdater()
 
 }
 
-void SnapshotUpdater::addSource(const QString & fileName,const QByteArray & source){
-    QFuture<void> future = QtConcurrent::run(threadPool,addSourceFuture,this,fileName,source);
+void SnapshotUpdater::setSource(const QString & fileName,const QByteArray & source){
+    QFuture<void> future = QtConcurrent::run(threadPool,setSourceFuture,this,fileName,source);
 }
 
-void addSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,const QByteArray & source){
+void setSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,const QByteArray & source){
     snapshotUpdater->processing.cancel();
     snapshotUpdater->processing.waitForFinished();
     QMutexLocker locker(&snapshotUpdater->pendingSourceMutex);
