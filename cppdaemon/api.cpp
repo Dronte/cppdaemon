@@ -59,7 +59,7 @@ void Api::findUsages(int taskId,qintptr socketDescriptor,const QJsonObject & arg
     int line = lineValue.toInt();
     int row = rowValue.toInt();
     //TODO error handling
-    project.findUsages(taskId,fileName,line,row);
+    //project.findUsages(taskId,fileName,line,row);
     taskSocketMap[taskId]=socketDescriptor;
 }
 

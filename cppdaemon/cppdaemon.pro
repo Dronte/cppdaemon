@@ -17,11 +17,11 @@ TEMPLATE = app
 CONFIG += c++11
 SOURCES += main.cpp \
 #    cpphelper.cpp \
-    #project.cpp \
     socketlistener.cpp \
     api.cpp \
     task.cpp \
-    project.cpp
+    project.cpp \
+    snapshotupdater.cpp
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../cplusplus/release/ -lcplusplus
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../cplusplus/debug/ -lcplusplus
@@ -38,4 +38,5 @@ HEADERS += \
     project.h \
     socketlistener.h \
     api.h \
-    task.h
+    task.h \
+    snapshotupdater.h
