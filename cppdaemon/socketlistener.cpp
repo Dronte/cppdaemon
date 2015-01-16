@@ -75,15 +75,10 @@ void Server::read(const QString & socketDescriptorString){
 
 void Server::disconnected(const QString & socketDescriptorString){
     qintptr socketDescriptor = stoll(socketDescriptorString.toStdString());
-    qDebug()<<socketDescriptor<<" disconnected!";
     QLocalSocket* sender = connections[socketDescriptor];
-    qDebug()<<"disconnected"<<sender<<" "<<QObject::sender();
-    qDebug()<<"mapping "<<readSlotsMapper.mapping(socketDescriptorString);
     readSlotsMapper.removeMappings(sender);
-    readSlotsMapper.removeMappings(NULL);
-    //disconnectSlotsMapper.removeMappings(sender);
+    disconnectSlotsMapper.removeMappings(sender);
     connections.remove(socketDescriptor);
-    // FIXME A bug here
 }
 Server::~Server()
 {
