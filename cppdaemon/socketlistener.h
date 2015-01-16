@@ -16,7 +16,6 @@ private:
     QMap<qintptr,QLocalSocket*> connections;
     QMap<qintptr,qint64> bytesPending;
     QSignalMapper readSlotsMapper;
-    //QSignalMapper readNextSlotsMapper;
     QSignalMapper disconnectSlotsMapper;
     Api api;
 public:
