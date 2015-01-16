@@ -30,6 +30,7 @@ void Api::processRequest(qintptr socketDescriptor,QByteArray request){
             //ERROR
         }
         QString method = methodValue.toString();
+        qDebug()<<"method="<<method;
         QJsonObject arguments = argumentsValue.toObject();
         int taskId = taskIdValue.toInt();
         if(method==QString("setSource")){
@@ -50,7 +51,6 @@ void Api::setSource(int taskId,const QJsonObject & arguments){
     project.setSource(taskId,fileName.toString(),text.toString().toUtf8());
 }
 
-
 void Api::findUsages(int taskId,qintptr socketDescriptor,const QJsonObject & arguments){
     QJsonValue fileNameValue = arguments["fileName"];
     QJsonValue lineValue = arguments["line"];
@@ -59,25 +59,33 @@ void Api::findUsages(int taskId,qintptr socketDescriptor,const QJsonObject & arg
     int line = lineValue.toInt();
     int row = rowValue.toInt();
     //TODO error handling
-    //project.findUsages(taskId,fileName,line,row);
     taskSocketMap[taskId]=socketDescriptor;
+    project.findUsages(taskId,fileName,line,row);
 }
 
 void Api::findUsagesFinished(int taskId,QList<Usage> usages){
     qintptr socketDescriptor = taskSocketMap[taskId];
     taskSocketMap.remove(taskId);
-    QJsonObject answer;
-    answer["usages"] = QJsonObject();
+    QJsonObject usagesObject;
+    QMap<QString,QJsonArray> usagesMap;
     for(auto usage:usages){
-        if(!answer["usages"].toObject().contains(usage.path)){
-            answer["usages"].toObject()[usage.path] = QJsonArray();
-        }
+        qDebug()<<usage.lineText;
         QJsonObject usageObject;
         usageObject["col"] = usage.col;
         usageObject["line"] = usage.line;
         usageObject["len"] = usage.len;
-        answer["usages"].toObject()[usage.path].toArray().append(usageObject);
+        usageObject["lineText"] = usage.lineText;
+        if(usagesMap.find(usage.path) == usagesMap.end()){
+            usagesMap[usage.path] = QJsonArray();
+        }
+        usagesMap[usage.path].append(usageObject);
     }
+    for(auto usagePath:usagesMap.keys()){
+        usagesObject[usagePath] = usagesMap[usagePath];
+    }
+    QJsonObject answer;
+    answer["usages"] = usagesObject;
+    qDebug()<<"result:"<<QJsonDocument(answer).toJson();
     emit requestFinished(socketDescriptor,QJsonDocument(answer).toJson());
 }
 

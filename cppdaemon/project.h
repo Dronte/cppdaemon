@@ -20,17 +20,17 @@ private:
     Snapshot currentSnapshot;
     QThreadPool threadPool;
     SnapshotUpdater snapshotUpdater;
-    void findUsagesFuture(const QString & document,int row,int line)const;
-
+    friend void findUsagesFuture(Project * project,int taskId,const QString & fileName,int line,int row);
 public:
+    void findUsages(int taskId,const QString & document,int row,int line);
     explicit Project(QObject *parent = 0);
     ~Project();
     //void complete(const QString & document,int row,int line);
     //void findUsages(int taskId,const QString & document,int row,int line);
-    void setSource(int taskId,const QString filename,const QByteArray & source);
+    void setSource(int taskId,const QString & filename,const QByteArray & source);
     void updateSnapshot(const Snapshot & snapshot);
 signals:
-    //void findUsagesFinished(int,QList<Usage> );
+    void findUsagesFinished(int,QList<Usage> );
     //void setSourceFinished();
 };
 

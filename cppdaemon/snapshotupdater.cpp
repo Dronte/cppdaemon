@@ -21,7 +21,8 @@ void setSourceFuture(SnapshotUpdater * snapshotUpdater,const QString & fileName,
     snapshotUpdater->processing.waitForFinished();
     QMutexLocker locker(&snapshotUpdater->pendingSourceMutex);
     snapshotUpdater->pendingSource[fileName]=source;
-    snapshotUpdater->processing.setFuture(QtConcurrent::map(snapshotUpdater->pendingSource,
+    auto fileNameList = snapshotUpdater->pendingSource.keys();
+    snapshotUpdater->processing.setFuture(QtConcurrent::map(fileNameList,
                                                     snapshotUpdater->sourceParser));
 }
 
@@ -30,8 +31,14 @@ void SnapshotUpdater::SourceParser::operator()(const QString & fileName){
     QMutexLocker locker(&snapshotUpdater->pendingSourceMutex);
     auto document = snapshotUpdater->snapshot.preprocessedDocument(
                     snapshotUpdater->pendingSource[fileName],fileName);
+    document->tokenize();
+    document->parse();
+    document->check();
     snapshotUpdater->snapshot.insert(document);
     snapshotUpdater->pendingSource.remove(fileName);
+    if(snapshotUpdater->pendingSource.isEmpty()){
+        snapshotUpdater->callback(snapshotUpdater->snapshot);
+    }
     /*for(auto includedFile:snapshotUpdater->snapshot.allIncludesForDocument(document)){
         if(snapshotUpdater->pendingSource.find(includedFile)!=snapshotUpdater->pendingSource.end()){
             for(auto includePath:includePaths){
