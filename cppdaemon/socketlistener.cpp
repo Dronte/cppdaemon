@@ -13,6 +13,10 @@ Server::Server(const QString  & bindTo)
     connect(this,SIGNAL(requested(qintptr,QByteArray)),&api,SLOT(processRequest(qintptr,QByteArray)));
     connect(&api,SIGNAL(requestFinished(qintptr,QByteArray)),this,SLOT(write(qintptr,QByteArray)));
 
+    connect(&readSlotsMapper,SIGNAL(mapped(QString)),
+            this,SLOT(read(QString)));
+    connect(this,SIGNAL(readNext(QString)),&readSlotsMapper,SIGNAL(mapped(QString)));
+    connect(&disconnectSlotsMapper,SIGNAL(mapped(QString)),this,SLOT(disconnected(QString)));
 }
 
 void Server::connected(){
@@ -20,12 +24,10 @@ void Server::connected(){
     QLocalSocket * connection = localServer.nextPendingConnection();
     connections[connection->socketDescriptor()] = connection;
     connect(connection,SIGNAL(readyRead()),&readSlotsMapper,SLOT(map()));
+    connect(connection,SIGNAL(disconnected()),&disconnectSlotsMapper,SLOT(map()));
     readSlotsMapper.setMapping(connection,QString::number(connection->socketDescriptor()));
-    connect(&readSlotsMapper,SIGNAL(mapped(const QString &)),
-            this,SLOT(read(const QString &)));
+    disconnectSlotsMapper.setMapping(connection,QString::number(connection->socketDescriptor()));
     //TODO connect(connection,SIGNAL(error()),this,SLOT(error));
-    readSlotsMapper.setMapping(connection,QString::number(connection->socketDescriptor()));
-    connect(&readSlotsMapper,SIGNAL(mapped(const QString &)),this,SLOT(disconnected(const QString &)));
 }
 
 void Server::write(qintptr socketDescriptor,QByteArray answer){
@@ -62,6 +64,9 @@ void Server::read(const QString & socketDescriptorString){
        bytesPending.remove(socketDescriptor);
        message = QByteArray(buffer);
        delete[] buffer;
+       if(socket->bytesAvailable() > 0){
+           emit readNext(socketDescriptorString);
+       }
    }else{
       return;
    }
